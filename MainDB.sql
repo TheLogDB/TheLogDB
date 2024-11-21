@@ -57,7 +57,7 @@ CREATE TABLE UserProjects (
     User_ID INT NOT NULL,
     Project_ID INT NOT NULL,
     Project_Role ENUM('Contributor', 'Manager', 'Viewer') NOT NULL,
-    Assigned_Date DATE DEFAULT CURRENT_DATE,
+    Assigned_Date DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (User_ID, Project_ID),
     FOREIGN KEY (User_ID) REFERENCES Users(User_ID) ON DELETE CASCADE,
     FOREIGN KEY (Project_ID) REFERENCES Projects(Project_ID) ON DELETE CASCADE
