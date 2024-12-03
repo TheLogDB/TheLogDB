@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        .container {
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+            color: white;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .form-container {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>The LogDB system</h1>
+    </header>
+    
+    <div class="container">
+        <h2>Users</h2>
+        <table id="users-table">
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>User Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+        <a href="#" class="btn" id="add-user-btn">Add User</a>
+        
+        <div class="form-container" id="user-form" style="display: none;">
+            <h3>Add New User</h3>
+            <form id="user-form-data">
+                <label for="user-name">User Name:</label><br>
+                <input type="text" id="user-name" name="user_name" required><br><br>
+                <label for="email">Email:</label><br>
+                <input type="email" id="email" name="email" required><br><br>
+                <label for="role">Role:</label><br>
+                <select id="role" name="role" required>
+                    <option value="Project Manager">Project Manager</option>
+                    <option value="Root">Root</option>
+                    <option value="Viewer">Viewer</option>
+                </select><br><br>
+                <button type="submit" class="btn">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsers();
+
+            document.getElementById('add-user-btn').addEventListener('click', function() {
+                document.getElementById('user-form').style.display = 'block';
+            });
+
+            document.getElementById('user-form-data').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const data = {
+                    user_name: formData.get('user_name'),
+                    email: formData.get('email'),
+                    role: formData.get('role')
+                };
+
+                fetch('/add_user', {
+                    method: 'POST',
+                    body: JSON.stringify(data),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(result => {
+                    alert(result.message);
+                    loadUsers();
+                    document.getElementById('user-form').style.display = 'none';
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        });
+
+        function loadUsers() {
+            fetch('/get_users')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.querySelector('#users-table tbody');
+                    tbody.innerHTML = '';
+                    data.users.forEach(user => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${user.User_ID}</td>
+                            <td>${user.User_Name}</td>
+                            <td>${user.Email}</td>
+                            <td>${user.Role_Name}</td>
+                            <td><button class="btn" onclick="deleteUser(${user.User_ID})">Delete</button></td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => console.error('Error loading users:', error));
+        }
+
+        function deleteUser(userId) {
+            fetch(`/delete_user/${userId}`, {
+                method: 'DELETE',
+            })
+            .then(response => response.json())
+            .then(result => {
+                alert(result.message);
+                loadUsers();
+            })
+            .catch(error => console.error('Error deleting user:', error));
+        }
+    </script>
+</body>
+</html>
+
+
