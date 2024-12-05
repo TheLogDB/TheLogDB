@@ -38,12 +38,30 @@ def add_user():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO Users (User_Name, Email, Role_ID)
-        VALUES (%s, %s, (SELECT Role_ID FROM Roles WHERE Role_Name = %s))
-    """, (user_name, email, role))
+        INSERT INTO Users (User_Name, Email, Role_ID, PasswordHash)
+        VALUES (%s, %s, (SELECT Role_ID FROM Roles WHERE Role_Name = %s), %s)
+    """, (user_name, email, role, ''))  
     conn.commit()
     conn.close()
     return jsonify({'message': 'User added successfully!'})
+
+@app.route('/edit_user/<int:user_id>', methods=['PUT'])
+def edit_user(user_id):
+    data = request.get_json()
+    user_name = data['user_name']
+    email = data['email']
+    role = data['role']
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE Users
+        SET User_Name = %s, Email = %s, Role_ID = (SELECT Role_ID FROM Roles WHERE Role_Name = %s)
+        WHERE User_ID = %s
+    """, (user_name, email, role, user_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'User updated successfully!'})
 
 @app.route('/delete_user/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
@@ -56,3 +74,4 @@ def delete_user(user_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
