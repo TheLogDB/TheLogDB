@@ -42,6 +42,12 @@ def load_config(config_path):
             logging.error("Unsupported configuration file format. Use YAML or JSON.")
             sys.exit(1)
     
+    # Ensure 'project.id' exists
+    project_id = config.get('project', {}).get('id')
+    if not project_id:
+        logging.error("Project ID not found in configuration.")
+        sys.exit(1)
+    
     return config
 
 def send_log(server_address, api_key, log_entry):
@@ -61,25 +67,26 @@ def send_log(server_address, api_key, log_entry):
     except Exception as e:
         logging.error(f"Error sending log: {e}")
 
-def parse_live_mode(pipe_input, server_address, api_key):
+def parse_live_mode(pipe_input, server_address, api_key, project_id):
     """
     Handle Live Mode: Read from stdin and send logs in real-time.
-    Usage: /some/exec | logdb_endpoint.py --live
+    Usage: /some/exec | logdb_endpoint.py live
     """
     logging.info("Running in Live Mode.")
     for line in sys.stdin:
         log_entry = {
-            "logLevel": "INFO",  # Default level; can be enhanced to parse levels
+            "projectId": project_id,  # Include Project ID
+            "logLevel": "INFO",       # Default level; can be enhanced to parse levels
             "message": line.strip(),
             "module": "Live Mode",
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.utcnow().isoformat()
         }
         send_log(server_address, api_key, log_entry)
 
-def parse_archive_mode(path, recursive, date_format, server_address, api_key):
+def parse_archive_mode(path, recursive, date_format, server_address, api_key, project_id):
     """
     Handle Archive Mode: Read log files and send them to the server.
-    Usage: logdb_endpoint.py --archive /path/to/log --recursive --date-format "yyyy-MM-dd HH:mm:ss Z"
+    Usage: logdb_endpoint.py archive /path/to/log --recursive --date-format "yyyy-MM-dd HH:mm:ss Z"
     """
     logging.info("Running in Archive Mode.")
     path = Path(path)
@@ -107,23 +114,24 @@ def parse_archive_mode(path, recursive, date_format, server_address, api_key):
                     message = line.strip()
                     if date_format:
                         try:
-                            # Example format: yyyy-MM-dd HH:mm:ss Z
-                            # Python equivalent: %Y-%m-%d %H:%M:%S %z
-                            # Adjust based on the provided date_format
-                            # Here, we assume the timestamp is at the start of the line
+                            # Parse the timestamp from the line based on date_format
+                            # This is simplified; adjust based on your log format
+                            # Assuming the timestamp is at the start of the line
                             # e.g., "2024-12-05 04:54:20 +0800 Log message"
-                            # Split the line into timestamp and message
-                            parts = line.split(' ', 2)
-                            if len(parts) >= 3:
+                            parts = line.split(' ', 3)
+                            if len(parts) >= 4:
                                 timestamp_str = ' '.join(parts[:3])
+                                # Convert Unicode Technical Standard #35 format to Python's strptime format
+                                # Example: "yyyy-MM-dd HH:mm:ss Z" -> "%Y-%m-%d %H:%M:%S %z"
                                 timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S %z").isoformat()
-                                message = parts[3] if len(parts) > 3 else ""
+                                message = parts[3]
                         except Exception as e:
                             logging.warning(f"Failed to parse timestamp: {e}")
                             timestamp = datetime.utcnow().isoformat() + "Z"
                     
                     log_entry = {
-                        "logLevel": "INFO",  # Default level; can be enhanced to parse levels
+                        "projectId": project_id,  # Include Project ID
+                        "logLevel": "INFO",       # Default level; can be enhanced to parse levels
                         "message": message,
                         "module": "Archive Mode",
                         "timestamp": timestamp if timestamp else datetime.utcnow().isoformat() + "Z"
@@ -157,18 +165,20 @@ def main():
     config = load_config(args.config)
     server_address = config.get('server', {}).get('address')
     api_key = config.get('server', {}).get('api_key') or config.get('auth', {}).get('token')
+    project_id = config.get('project', {}).get('id')
     
-    if not server_address or not api_key:
-        logging.error("Server address and API key/token must be provided in the configuration file.")
+    if not server_address or not api_key or not project_id:
+        logging.error("Server address, API key/token, and Project ID must be provided in the configuration file.")
         sys.exit(1)
     
     if args.mode == 'live':
-        parse_live_mode(sys.stdin, server_address, api_key)
+        parse_live_mode(sys.stdin, server_address, api_key, project_id)
     elif args.mode == 'archive':
-        parse_archive_mode(args.path, args.recursive, args.date_format, server_address, api_key)
+        parse_archive_mode(args.path, args.recursive, args.date_format, server_address, api_key, project_id)
     else:
         logging.error("Unknown mode selected.")
         sys.exit(1)
 
 if __name__ == '__main__':
     main()
+
